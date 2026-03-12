@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Southern IoT — Water Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #04080d;
+  --bg2:      #070d14;
+  --bg3:      #0a1520;
+  --glass:    rgba(255,255,255,0.035);
+  --glass2:   rgba(255,255,255,0.06);
+  --glass3:   rgba(255,255,255,0.09);
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.12);
+  --accent:   #00d4aa;
+  --accent2:  #0088ff;
+  --warn:     #ffaa00;
+  --danger:   #ff3355;
+  --text:     #d8eaf8;
+  --dim:      #5a7898;
+  --dim2:     #3a5870;
+  --r:        12px;
+  --glow-g:   0 0 30px rgba(0,212,170,0.12);
+  --glow-b:   0 0 30px rgba(0,136,255,0.1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:'Outfit',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  display:flex;flex-direction:column;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% -10%,rgba(0,212,170,0.05) 0%,transparent 55%),
+    radial-gradient(ellipse 60% 50% at 80% 110%,rgba(0,136,255,0.05) 0%,transparent 55%),
+    repeating-linear-gradient(0deg,transparent,transparent 59px,rgba(255,255,255,0.008) 60px),
+    repeating-linear-gradient(90deg,transparent,transparent 59px,rgba(255,255,255,0.008) 60px);
+  pointer-events:none;z-index:0;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(0,212,170,0.25);border-radius:2px;}
+
+/* ===== TOP BAR ===== */
+.topbar{
+  position:relative;z-index:10;
+  height:54px;min-height:54px;
+  background:rgba(4,8,13,0.9);
+  backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 20px;gap:16px;
+}
+.topbar-logo{display:flex;align-items:center;gap:10px;}
+.logo-mark{
+  width:32px;height:32px;border-radius:8px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;box-shadow:0 4px 16px rgba(0,212,170,0.25);
+  flex-shrink:0;
+}
+.logo-text-wrap .t1{
+  font-family:'Rajdhani',sans-serif;
+  font-size:1rem;font-weight:700;letter-spacing:1.5px;
+  line-height:1.1;
+}
+.logo-text-wrap .t2{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.55rem;letter-spacing:3px;
+  color:var(--dim);text-transform:uppercase;
+}
+.topbar-mid{flex:1;display:flex;align-items:center;justify-content:center;}
+.server-status{
+  display:flex;align-items:center;gap:6px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.6rem;letter-spacing:2px;
+  color:var(--dim);
+}
+.server-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 6px var(--accent);
+  animation:pulse-dot 2s infinite;
+}
+@keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:0.4;}}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.tb-btn{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:6px;
+  background:var(--glass);border:1px solid var(--border);
+  color:var(--dim);font-family:'Share Tech Mono',monospace;
+  font-size:0.6rem;letter-spacing:1px;
+  cursor:pointer;transition:all 0.2s;
+}
+.tb-btn:hover{border-color:var(--accent);color:var(--accent);}
+.tb-btn svg{width:12px;height:12px;}
+
+/* ===== LAYOUT ===== */
+.layout{
+  flex:1;overflow:hidden;
+  display:grid;
+  grid-template-columns:240px 1fr 300px;
+  position:relative;z-index:1;
+  min-height:0;
+}
+
+/* ===== LEFT SIDEBAR — Device List ===== */
+.sidebar{
+  background:rgba(4,8,13,0.6);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.sidebar-header{
+  padding:14px 16px 10px;
+  border-bottom:1px solid var(--border);
+}
+.sidebar-title{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.6rem;letter-spacing:3px;
+  color:var(--dim);margin-bottom:8px;
+}
+.add-device-btn{
+  width:100%;padding:8px;
+  background:rgba(0,212,170,0.07);
+  border:1px dashed rgba(0,212,170,0.25);
+  border-radius:8px;color:var(--accent);
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.65rem;letter-spacing:1px;
+  cursor:pointer;transition:all 0.2s;
+}
+.add-device-btn:hover{background:rgba(0,212,170,0.12);border-style:solid;}
+.device-list{flex:1;overflow-y:auto;padding:8px;}
+.device-card{
+  padding:10px 12px;border-radius:var(--r);
+  border:1px solid var(--border);
+  background:var(--glass);
+  cursor:pointer;margin-bottom:6px;
+  transition:all 0.2s;position:relative;
+  overflow:hidden;
+}
+.device-card::before{
+  content:'';position:absolute;
+  left:0;top:0;bottom:0;width:2px;
+  background:transparent;
+  transition:background 0.2s;
+}
+.device-card:hover{background:var(--glass2);border-color:var(--border2);}
+.device-card.selected{border-color:rgba(0,212,170,0.3);background:rgba(0,212,170,0.05);}
+.device-card.selected::before{background:var(--accent);}
+.dc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.dc-name{font-size:0.82rem;font-weight:600;}
+.dc-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.dc-dot.on{background:var(--accent);box-shadow:0 0 5px var(--accent);}
+.dc-dot.off{background:var(--dim2);}
+.dc-ip{font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--dim);}
+.dc-level{
+  display:flex;align-items:center;gap:6px;
+  margin-top:6px;
+}
+.dc-bar{
+  flex:1;height:3px;border-radius:2px;
+  background:rgba(255,255,255,0.07);overflow:hidden;
+}
+.dc-bar-fill{
+  height:100%;border-radius:2px;
+  background:linear-gradient(90deg,var(--accent2),var(--accent));
+  transition:width 0.5s ease;
+}
+.dc-level-txt{font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--dim);}
+
+/* ===== MAIN PANEL ===== */
+.main{
+  overflow-y:auto;padding:20px;
+  display:flex;flex-direction:column;gap:16px;
+}
+.no-device{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  color:var(--dim);text-align:center;
+  gap:12px;
+}
+.no-device-icon{font-size:3rem;opacity:0.3;}
+.no-device-title{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:600;color:var(--dim2);}
+.no-device-sub{font-size:0.8rem;line-height:1.6;max-width:280px;}
+
+/* ===== DEVICE HEADER ===== */
+.device-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 20px;
+  background:var(--glass);border:1px solid var(--border);
+  border-radius:var(--r);
+}
+.dh-left{}
+.dh-name{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;letter-spacing:0.5px;}
+.dh-meta{display:flex;align-items:center;gap:10px;margin-top:3px;}
+.dh-ip{font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--dim);}
+.dh-mac{font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--dim2);}
+.dh-right{display:flex;align-items:center;gap:8px;}
+.status-pill{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:20px;
+  font-family:'Share Tech Mono',monospace;font-size:0.65rem;
+  letter-spacing:1px;font-weight:600;
+}
+.pill-online{background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.25);color:var(--accent);}
+.pill-offline{background:rgba(255,51,85,0.1);border:1px solid rgba(255,51,85,0.2);color:var(--danger);}
+.mode-pill{
+  padding:5px 12px;border-radius:20px;
+  font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:1px;
+}
+.mode-auto{background:rgba(0,136,255,0.1);border:1px solid rgba(0,136,255,0.2);color:var(--accent2);}
+.mode-manual{background:rgba(255,170,0,0.1);border:1px solid rgba(255,170,0,0.2);color:var(--warn);}
+.refresh-btn{
+  width:30px;height:30px;border-radius:8px;
+  background:var(--glass2);border:1px solid var(--border);
+  color:var(--dim);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;
+}
+.refresh-btn:hover{border-color:var(--accent);color:var(--accent);}
+.refresh-btn.spinning svg{animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ===== MAIN GRID ===== */
+.main-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:14px;
+}
+.main-grid-wide{
+  display:grid;
+  grid-template-columns:1fr 2fr;
+  gap:14px;
+}
+
+/* ===== GLASS CARD ===== */
+.card{
+  background:var(--glass);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px;
+  position:relative;overflow:hidden;
+}
+.card-label{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.58rem;letter-spacing:2.5px;
+  color:var(--dim);text-transform:uppercase;
+  margin-bottom:10px;
+}
+.card-val{font-size:2rem;font-weight:700;line-height:1;}
+.card-unit{font-size:0.75rem;color:var(--dim);margin-top:3px;}
+
+/* ===== TANK CARD ===== */
+.tank-card{
+  background:var(--glass);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px;
+  display:flex;flex-direction:column;align-items:center;
+}
+.tank-outer{
+  position:relative;width:100px;height:140px;
+  margin:12px 0;
+}
+.tank-shell{
+  width:100%;height:100%;
+  border:1.5px solid rgba(255,255,255,0.1);
+  border-radius:8px 8px 14px 14px;
+  overflow:hidden;
+  background:rgba(0,0,0,0.4);
+  position:relative;
+}
+.tank-water{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(180deg,rgba(0,212,170,0.55),rgba(0,136,255,0.4));
+  transition:height 1.2s cubic-bezier(0.25,1,0.5,1);
+  border-radius:0 0 12px 12px;
+}
+.tank-water::before{
+  content:'';position:absolute;
+  top:-4px;left:-10%;right:-10%;height:8px;
+  background:rgba(0,212,170,0.3);
+  border-radius:50%;
+  animation:wave 2s ease-in-out infinite;
+}
+@keyframes wave{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
+.tank-pct-label{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  font-family:'Rajdhani',sans-serif;
+  font-size:1.5rem;font-weight:700;
+  color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.6);
+  z-index:2;pointer-events:none;
+}
+.tank-dist{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.65rem;color:var(--dim);margin-top:4px;
+}
+.tank-thresholds{
+  width:100%;display:flex;justify-content:space-between;
+  margin-top:10px;
+}
+.th-item{text-align:center;}
+.th-val{font-family:'Rajdhani',sans-serif;font-size:0.85rem;font-weight:600;}
+.th-lbl{font-family:'Share Tech Mono',monospace;font-size:0.55rem;color:var(--dim);}
+.th-start .th-val{color:var(--accent2);}
+.th-stop .th-val{color:var(--accent);}
+
+/* ===== PUMP CARD ===== */
+.pump-card{
+  background:var(--glass);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px;
+  display:flex;flex-direction:column;
+  justify-content:space-between;
+}
+.pump-status{
+  display:flex;align-items:center;gap:10px;
+  margin:8px 0 16px;
+}
+.pump-icon{
+  width:44px;height:44px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;transition:all 0.3s;
+}
+.pump-icon.running{
+  background:rgba(0,212,170,0.1);
+  border:1px solid rgba(0,212,170,0.2);
+  box-shadow:0 0 20px rgba(0,212,170,0.15);
+  animation:pump-pulse 1s ease-in-out infinite;
+}
+.pump-icon.stopped{background:rgba(255,255,255,0.04);border:1px solid var(--border);}
+@keyframes pump-pulse{0%,100%{box-shadow:0 0 10px rgba(0,212,170,0.1);}50%{box-shadow:0 0 25px rgba(0,212,170,0.3);}}
+.pump-state-txt{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;}
+.pump-state-running{color:var(--accent);}
+.pump-state-stopped{color:var(--dim2);}
+.pump-toggle-row{display:flex;gap:8px;}
+.ctrl-btn{
+  flex:1;padding:10px;border-radius:8px;
+  border:none;cursor:pointer;
+  font-family:'Rajdhani',sans-serif;
+  font-size:0.85rem;font-weight:700;letter-spacing:1px;
+  transition:all 0.2s;
+}
+.ctrl-btn-on{
+  background:linear-gradient(135deg,rgba(0,212,170,0.2),rgba(0,136,255,0.15));
+  border:1px solid rgba(0,212,170,0.3);color:var(--accent);
+}
+.ctrl-btn-on:hover{background:linear-gradient(135deg,rgba(0,212,170,0.3),rgba(0,136,255,0.25));}
+.ctrl-btn-off{
+  background:rgba(255,51,85,0.08);
+  border:1px solid rgba(255,51,85,0.2);color:var(--danger);
+}
+.ctrl-btn-off:hover{background:rgba(255,51,85,0.14);}
+.ctrl-btn:disabled{opacity:0.3;cursor:not-allowed;}
+
+/* ===== METRICS ROW ===== */
+.metrics-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.metric-card{
+  background:var(--glass);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px;text-align:center;
+}
+.metric-val{font-family:'Rajdhani',sans-serif;font-size:1.5rem;font-weight:700;}
+.metric-lbl{font-family:'Share Tech Mono',monospace;font-size:0.55rem;letter-spacing:2px;color:var(--dim);margin-top:3px;}
+
+/* ===== HISTORY CHART ===== */
+.chart-wrap{
+  background:var(--glass);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px;
+}
+.chart-area{height:80px;position:relative;margin-top:10px;}
+.chart-svg{width:100%;height:100%;}
+
+/* ===== RIGHT PANEL — Settings ===== */
+.right-panel{
+  background:rgba(4,8,13,0.6);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.rp-header{
+  padding:14px 16px;
+  border-bottom:1px solid var(--border);
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.6rem;letter-spacing:3px;color:var(--dim);
+}
+.rp-body{flex:1;overflow-y:auto;padding:12px;}
+.rp-section{margin-bottom:16px;}
+.rp-section-title{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.58rem;letter-spacing:2px;
+  color:var(--dim);margin-bottom:8px;
+  padding-bottom:5px;
+  border-bottom:1px solid var(--border);
+}
+
+/* ===== FORM ELEMENTS ===== */
+.field{margin-bottom:10px;}
+.field-label{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.6rem;letter-spacing:1px;
+  color:var(--dim);display:block;margin-bottom:5px;
+}
+.field-input{
+  width:100%;padding:9px 11px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:'Outfit',sans-serif;
+  font-size:0.85rem;outline:none;
+  transition:border-color 0.2s;
+}
+.field-input:focus{border-color:rgba(0,212,170,0.4);}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.rp-btn{
+  width:100%;padding:9px;border:none;
+  border-radius:8px;cursor:pointer;
+  font-family:'Rajdhani',sans-serif;
+  font-size:0.85rem;font-weight:700;letter-spacing:1px;
+  transition:all 0.2s;margin-top:6px;
+}
+.rp-btn-primary{
+  background:linear-gradient(135deg,var(--accent),#00a07a);
+  color:#fff;
+}
+.rp-btn-primary:hover{opacity:0.85;}
+.rp-btn-secondary{
+  background:var(--glass2);
+  border:1px solid var(--border);color:var(--text);
+}
+.rp-btn-danger{
+  background:rgba(255,51,85,0.08);
+  border:1px solid rgba(255,51,85,0.2);
+  color:var(--danger);
+}
+
+/* ===== TOGGLE SWITCH ===== */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;}
+.toggle-label{font-size:0.8rem;color:var(--text);}
+.toggle{
+  width:40px;height:22px;border-radius:11px;
+  border:none;cursor:pointer;position:relative;
+  transition:background 0.3s;flex-shrink:0;
+}
+.toggle.on{background:linear-gradient(135deg,var(--accent),#00a07a);}
+.toggle.off{background:rgba(255,255,255,0.1);}
+.toggle::after{
+  content:'';position:absolute;
+  top:2px;width:18px;height:18px;
+  border-radius:9px;background:#fff;
+  transition:left 0.3s;
+  box-shadow:0 1px 4px rgba(0,0,0,0.3);
+}
+.toggle.on::after{left:20px;}
+.toggle.off::after{left:2px;}
+
+/* ===== INFO ROWS ===== */
+.info-row{
+  display:flex;justify-content:space-between;
+  align-items:center;padding:6px 0;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.info-row:last-child{border:none;}
+.info-key{font-size:0.72rem;color:var(--dim);}
+.info-val{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.7rem;color:var(--text);
+}
+
+/* ===== LOG ===== */
+.log-box{
+  background:rgba(0,0,0,0.4);border:1px solid var(--border);
+  border-radius:8px;padding:8px;
+  height:100px;overflow-y:auto;
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.62rem;line-height:1.8;
+}
+.log-entry{color:var(--dim);}
+.log-entry.ok{color:var(--accent);}
+.log-entry.warn{color:var(--warn);}
+.log-entry.err{color:var(--danger);}
+
+/* ===== ADD DEVICE MODAL ===== */
+.modal-overlay{
+  position:fixed;inset:0;z-index:100;
+  background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;
+  display:none;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  width:360px;
+  background:var(--bg3);
+  border:1px solid var(--border2);
+  border-radius:16px;padding:24px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+.modal-title{
+  font-family:'Rajdhani',sans-serif;
+  font-size:1.2rem;font-weight:700;
+  margin-bottom:4px;
+}
+.modal-sub{font-size:0.78rem;color:var(--dim);margin-bottom:18px;line-height:1.5;}
+.modal-btns{display:flex;gap:8px;margin-top:16px;}
+.modal-btns button{flex:1;}
+
+/* ===== TOAST ===== */
+.toast{
+  position:fixed;bottom:20px;left:50%;
+  transform:translateX(-50%);
+  background:rgba(7,13,20,0.95);
+  border:1px solid var(--border2);
+  border-radius:10px;padding:10px 20px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.7rem;letter-spacing:0.5px;
+  opacity:0;transition:opacity 0.3s;
+  pointer-events:none;z-index:200;
+  white-space:nowrap;
+}
+.toast.show{opacity:1;}
+.toast.ok{border-color:rgba(0,212,170,0.3);color:var(--accent);}
+.toast.err{border-color:rgba(255,51,85,0.3);color:var(--danger);}
+.toast.warn{border-color:rgba(255,170,0,0.3);color:var(--warn);}
+
+/* ===== RANGE ===== */
+input[type=range]{
+  -webkit-appearance:none;
+  width:100%;height:4px;
+  background:rgba(255,255,255,0.08);
+  border-radius:2px;outline:none;
+  accent-color:var(--accent);
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:14px;height:14px;border-radius:50%;
+  background:var(--accent);cursor:pointer;
+  box-shadow:0 0 6px rgba(0,212,170,0.4);
+}
+.range-val{
+  font-family:'Share Tech Mono',monospace;
+  font-size:0.72rem;color:var(--accent);
+  text-align:right;margin-top:2px;
+}
+</style>
+</head>
+<body>
+
+<!-- ===== TOP BAR ===== -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="logo-mark">💧</div>
+    <div class="logo-text-wrap">
+      <div class="t1">Southern IoT</div>
+      <div class="t2">Water Monitor System</div>
+    </div>
+  </div>
+  <div class="topbar-mid">
+    <div class="server-status">
+      <div class="server-dot"></div>
+      DASHBOARD SERVER RUNNING
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="tb-btn" onclick="pingAllDevices()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+      PING ALL
+    </button>
+    <button class="tb-btn" onclick="openAddModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      ADD DEVICE
+    </button>
+  </div>
+</div>
+
+<!-- ===== LAYOUT ===== -->
+<div class="layout">
+
+  <!-- LEFT — Device list -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">// REGISTERED DEVICES</div>
+      <button class="add-device-btn" onclick="openAddModal()">+ Add New Device</button>
+    </div>
+    <div class="device-list" id="device-list">
+      <div style="text-align:center;padding:30px 10px;color:var(--dim2);font-size:0.75rem;line-height:1.7;">
+        No devices added.<br>Click "Add Device" to<br>connect an ESP32.
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER — Main dashboard -->
+  <div class="main" id="main-panel">
+    <div class="no-device" id="no-device-msg">
+      <div class="no-device-icon">💧</div>
+      <div class="no-device-title">No Device Selected</div>
+      <div class="no-device-sub">Add a device using the button above, then select it from the list to view its dashboard.</div>
+    </div>
+    <div id="device-dashboard" style="display:none;">
+
+      <!-- Device header -->
+      <div class="device-header" id="dv-header">
+        <div class="dh-left">
+          <div class="dh-name" id="dv-name">Device</div>
+          <div class="dh-meta">
+            <span class="dh-ip" id="dv-ip"></span>
+            <span class="dh-mac" id="dv-mac"></span>
+          </div>
+        </div>
+        <div class="dh-right">
+          <span class="status-pill pill-offline" id="dv-online-pill">OFFLINE</span>
+          <span class="mode-pill mode-auto" id="dv-mode-pill">AUTO</span>
+          <button class="refresh-btn" id="refresh-btn" onclick="refreshSelected()" title="Refresh">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Top metrics -->
+      <div class="metrics-row">
+        <div class="metric-card">
+          <div class="metric-val" id="mt-level" style="color:var(--accent)">--</div>
+          <div class="metric-lbl">WATER LEVEL</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" id="mt-dist" style="color:var(--accent2)">--</div>
+          <div class="metric-lbl">SENSOR DIST cm</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" id="mt-fw" style="color:var(--dim)">--</div>
+          <div class="metric-lbl">FIRMWARE</div>
+        </div>
+      </div>
+
+      <!-- Tank + Pump row -->
+      <div class="main-grid-wide">
+
+        <!-- Tank visual -->
+        <div class="tank-card">
+          <div class="card-label">TANK STATUS</div>
+          <div class="tank-outer">
+            <div class="tank-shell">
+              <div class="tank-water" id="tank-water" style="height:0%"></div>
+              <div class="tank-pct-label" id="tank-pct-label">--</div>
+            </div>
+          </div>
+          <div class="tank-dist" id="tank-dist-txt">Distance: -- cm</div>
+          <div class="tank-thresholds">
+            <div class="th-item th-start">
+              <div class="th-val" id="th-start">--%</div>
+              <div class="th-lbl">START</div>
+            </div>
+            <div class="th-item">
+              <div class="th-val" style="color:var(--dim2)">|</div>
+            </div>
+            <div class="th-item th-stop">
+              <div class="th-val" id="th-stop">--%</div>
+              <div class="th-lbl">STOP</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pump control -->
+        <div class="pump-card">
+          <div>
+            <div class="card-label">PUMP CONTROL</div>
+            <div class="pump-status">
+              <div class="pump-icon stopped" id="pump-icon">⚙️</div>
+              <div>
+                <div class="pump-state-txt pump-state-stopped" id="pump-state-txt">STOPPED</div>
+                <div style="font-size:0.72rem;color:var(--dim);margin-top:2px;" id="pump-mode-note">AUTO mode active</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart -->
+          <div class="chart-wrap" style="margin:0;flex:1;">
+            <div class="card-label">LEVEL HISTORY</div>
+            <div class="chart-area">
+              <svg class="chart-svg" id="level-chart" viewBox="0 0 300 80" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#00d4aa" stop-opacity="0.3"/>
+                    <stop offset="100%" stop-color="#00d4aa" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path id="chart-fill" d="" fill="url(#chartGrad)"/>
+                <path id="chart-line" d="" fill="none" stroke="#00d4aa" stroke-width="1.5"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="pump-toggle-row" id="pump-btns">
+            <button class="ctrl-btn ctrl-btn-on" onclick="controlPump(true)">▶ START PUMP</button>
+            <button class="ctrl-btn ctrl-btn-off" onclick="controlPump(false)">■ STOP PUMP</button>
+          </div>
+          <div style="font-size:0.65rem;color:var(--dim2);margin-top:6px;font-family:'Share Tech Mono',monospace;" id="pump-disabled-note"></div>
+        </div>
+
+      </div>
+
+      <!-- Log -->
+      <div class="chart-wrap">
+        <div class="card-label">SYSTEM LOG</div>
+        <div class="log-box" id="system-log"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL — Settings -->
+  <div class="right-panel">
+    <div class="rp-header">// DEVICE SETTINGS</div>
+    <div class="rp-body" id="rp-body">
+
+      <!-- No selection -->
+      <div id="rp-no-device" style="text-align:center;padding:40px 10px;color:var(--dim2);font-size:0.75rem;line-height:1.7;">
+        Select a device<br>to configure settings
+      </div>
+
+      <!-- Settings content (hidden until device selected) -->
+      <div id="rp-settings" style="display:none;">
+
+        <!-- Device info -->
+        <div class="rp-section">
+          <div class="rp-section-title">DEVICE INFO</div>
+          <div class="info-row"><span class="info-key">Status</span><span class="info-val" id="ri-status">--</span></div>
+          <div class="info-row"><span class="info-key">IP Address</span><span class="info-val" id="ri-ip">--</span></div>
+          <div class="info-row"><span class="info-key">MAC</span><span class="info-val" id="ri-mac">--</span></div>
+          <div class="info-row"><span class="info-key">Firmware</span><span class="info-val" id="ri-fw">--</span></div>
+          <div class="info-row"><span class="info-key">Mode</span><span class="info-val" id="ri-mode">--</span></div>
+          <div class="info-row"><span class="info-key">Last Seen</span><span class="info-val" id="ri-lastseen">--</span></div>
+        </div>
+
+        <!-- Tank settings -->
+        <div class="rp-section">
+          <div class="rp-section-title">TANK SETTINGS</div>
+          <div class="field">
+            <label class="field-label">TANK HEIGHT (cm)</label>
+            <input type="number" id="set-tankH" class="field-input" min="10" max="500" placeholder="e.g. 120">
+          </div>
+          <div class="field">
+            <label class="field-label">OVERFLOW DIST FROM TOP (cm)</label>
+            <input type="number" id="set-ovfDist" class="field-input" min="0" max="50" placeholder="e.g. 10">
+          </div>
+        </div>
+
+        <!-- Auto switch -->
+        <div class="rp-section">
+          <div class="rp-section-title">AUTO SWITCHING</div>
+          <div class="toggle-row" style="margin-bottom:10px;">
+            <span class="toggle-label">Auto Switching</span>
+            <button class="toggle on" id="toggle-autoEn" onclick="toggleAutoEn()"></button>
+          </div>
+          <div class="field">
+            <label class="field-label">START AT (%) — <span id="lbl-start">20</span>%</label>
+            <input type="range" id="set-startLvl" min="5" max="50" value="20"
+              oninput="document.getElementById('lbl-start').textContent=this.value">
+          </div>
+          <div class="field">
+            <label class="field-label">STOP AT (%) — <span id="lbl-stop">90</span>%</label>
+            <input type="range" id="set-stopLvl" min="60" max="100" value="90"
+              oninput="document.getElementById('lbl-stop').textContent=this.value">
+          </div>
+          <button class="rp-btn rp-btn-primary" onclick="saveSettings()">SAVE SETTINGS</button>
+        </div>
+
+        <!-- Location label -->
+        <div class="rp-section">
+          <div class="rp-section-title">DEVICE LABEL</div>
+          <div class="field">
+            <label class="field-label">NAME</label>
+            <input type="text" id="set-devname" class="field-input" placeholder="e.g. Rooftop Tank">
+          </div>
+          <div class="field">
+            <label class="field-label">LOCATION</label>
+            <input type="text" id="set-location" class="field-input" placeholder="e.g. Building A">
+          </div>
+          <button class="rp-btn rp-btn-secondary" onclick="saveDeviceLabel()">UPDATE LABEL</button>
+        </div>
+
+        <!-- Remove device -->
+        <div class="rp-section">
+          <button class="rp-btn rp-btn-danger" onclick="removeDevice()">REMOVE DEVICE</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== ADD DEVICE MODAL ===== -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-title">Add ESP32 Device</div>
+    <div class="modal-sub">Enter the local IP address of your Southern Water Monitor device. Make sure it is connected to the same WiFi network as this PC.</div>
+    <div class="field">
+      <label class="field-label">DEVICE IP ADDRESS</label>
+      <input type="text" id="modal-ip" class="field-input" placeholder="e.g. 192.168.1.105" autocomplete="off">
+    </div>
+    <div class="field">
+      <label class="field-label">DEVICE NAME (optional)</label>
+      <input type="text" id="modal-name" class="field-input" placeholder="e.g. Rooftop Tank">
+    </div>
+    <div class="field">
+      <label class="field-label">LOCATION (optional)</label>
+      <input type="text" id="modal-location" class="field-input" placeholder="e.g. Building A">
+    </div>
+    <div class="modal-btns">
+      <button class="rp-btn rp-btn-secondary" onclick="closeAddModal()">Cancel</button>
+      <button class="rp-btn rp-btn-primary" onclick="addDevice()">Add Device</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ======================== STATE ========================
+let devices       = [];
+let selectedIp    = null;
+let autoEnabled   = true;
+let levelHistory  = [];
+let pollTimer     = null;
+
+// ======================== HELPERS ========================
+const $ = id => document.getElementById(id);
+let toastTimer = null;
+function toast(msg, type='ok') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = `toast show ${type}`;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = 'toast', 2800);
+}
+
+function logEntry(msg, type='') {
+  const box = $('system-log');
+  if (!box) return;
+  const now  = new Date().toLocaleTimeString('en-GB');
+  const div  = document.createElement('div');
+  div.className = `log-entry ${type}`;
+  div.textContent = `[${now}] ${msg}`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  // Keep max 60 entries
+  while (box.children.length > 60) box.removeChild(box.firstChild);
+}
+
+function fmtTime(iso) {
+  if (!iso) return '--';
+  return new Date(iso).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+}
+
+// ======================== API PROXY ========================
+async function apiGet(ip, endpoint) {
+  const r = await fetch(`/api/device/${ip}/${endpoint}`);
+  return r.json();
+}
+
+async function apiPost(ip, endpoint, body) {
+  const r = await fetch(`/api/device/${ip}/${endpoint}`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+  return r.json();
+}
+
+// ======================== DEVICE REGISTRY ========================
+async function loadRegistry() {
+  const r = await fetch('/api/registry');
+  const d = await r.json();
+  devices = d.devices || [];
+  renderDeviceList();
+}
+
+async function addDevice() {
+  const ip       = $('modal-ip').value.trim();
+  const name     = $('modal-name').value.trim();
+  const location = $('modal-location').value.trim();
+  if (!ip) { toast('Enter IP address', 'err'); return; }
+
+  // Validate: try to reach device first
+  toast('Checking device...', 'warn');
+  try {
+    const r = await fetch(`/api/registry/${ip}/ping`);
+    const d = await r.json();
+    if (!d.online) {
+      toast('Device not reachable. Check IP and connection.', 'err');
+      return;
+    }
+  } catch {
+    toast('Server error', 'err'); return;
+  }
+
+  const r = await fetch('/api/registry/add', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ip, name: name || `Device ${devices.length+1}`, location})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    await loadRegistry();
+    closeAddModal();
+    selectDevice(ip);
+    toast('Device added!', 'ok');
+    logEntry(`Device added: ${ip}`, 'ok');
+  }
+}
+
+async function removeDevice() {
+  if (!selectedIp) return;
+  if (!confirm('Remove this device from dashboard?')) return;
+  await fetch(`/api/registry/${selectedIp}`, {method:'DELETE'});
+  selectedIp = null;
+  if (pollTimer) clearInterval(pollTimer);
+  $('device-dashboard').style.display = 'none';
+  $('no-device-msg').style.display   = 'flex';
+  $('rp-settings').style.display     = 'none';
+  $('rp-no-device').style.display    = 'block';
+  await loadRegistry();
+  toast('Device removed', 'warn');
+}
+
+function renderDeviceList() {
+  const list = $('device-list');
+  if (devices.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:30px 10px;color:var(--dim2);font-size:0.75rem;line-height:1.7;">No devices added.<br>Click "Add Device" to<br>connect an ESP32.</div>`;
+    return;
+  }
+  list.innerHTML = '';
+  devices.forEach(dev => {
+    const div = document.createElement('div');
+    div.className = `device-card${dev.ip === selectedIp ? ' selected' : ''}`;
+    const lvl = dev.level >= 0 ? Math.round(dev.level) : 0;
+    div.innerHTML = `
+      <div class="dc-top">
+        <div class="dc-name">${dev.name}</div>
+        <div class="dc-dot ${dev.online ? 'on' : 'off'}"></div>
+      </div>
+      <div class="dc-ip">${dev.ip}</div>
+      <div class="dc-level">
+        <div class="dc-bar"><div class="dc-bar-fill" style="width:${lvl}%"></div></div>
+        <div class="dc-level-txt">${dev.level != null ? lvl+'%' : '--'}</div>
+      </div>`;
+    div.onclick = () => selectDevice(dev.ip);
+    list.appendChild(div);
+  });
+}
+
+// ======================== SELECT DEVICE ========================
+function selectDevice(ip) {
+  selectedIp = ip;
+  renderDeviceList();
+
+  const dev = devices.find(d => d.ip === ip);
+  $('no-device-msg').style.display   = 'none';
+  $('device-dashboard').style.display = 'block';
+  $('rp-no-device').style.display    = 'none';
+  $('rp-settings').style.display     = 'block';
+
+  // Fill known info immediately
+  if (dev) {
+    $('dv-name').textContent    = dev.name;
+    $('dv-ip').textContent      = dev.ip;
+    $('ri-ip').textContent      = dev.ip;
+    $('set-devname').value      = dev.name;
+    $('set-location').value     = dev.location || '';
+  }
+
+  levelHistory = [];
+  $('system-log').innerHTML = '';
+
+  if (pollTimer) clearInterval(pollTimer);
+  refreshSelected();
+  pollTimer = setInterval(refreshSelected, 4000);
+}
+
+// ======================== REFRESH STATUS ========================
+async function refreshSelected() {
+  if (!selectedIp) return;
+  const btn = $('refresh-btn');
+  btn.classList.add('spinning');
+
+  try {
+    const d = await apiGet(selectedIp, 'api/status');
+    updateDashboard(d);
+    logEntry(`Level: ${d.level >= 0 ? d.level.toFixed(1)+'%' : 'ERR'} | Pump: ${d.pump ? 'ON' : 'OFF'} | Mode: ${d.mode}`);
+  } catch {
+    markOffline();
+    logEntry('Device unreachable', 'err');
+  }
+
+  btn.classList.remove('spinning');
+}
+
+function updateDashboard(d) {
+  const dev = devices.find(x => x.ip === selectedIp);
+
+  // Online pill
+  $('dv-online-pill').className = 'status-pill pill-online';
+  $('dv-online-pill').textContent = 'ONLINE';
+  if (dev) { dev.online = true; dev.lastSeen = new Date().toISOString(); }
+
+  // Mode
+  const isManual = d.mode === 'MANUAL';
+  $('dv-mode-pill').className   = 'mode-pill ' + (isManual ? 'mode-manual' : 'mode-auto');
+  $('dv-mode-pill').textContent = d.mode || 'AUTO';
+  $('ri-mode').textContent      = d.mode || '--';
+
+  // Metrics
+  const lvl = d.level >= 0 ? d.level.toFixed(1) + '%' : 'ERR';
+  $('mt-level').textContent   = lvl;
+  $('mt-dist').textContent    = d.dist >= 0 ? d.dist.toFixed(1) : 'ERR';
+  $('mt-fw').textContent      = d.fw ? 'v' + d.fw : '--';
+  $('dv-mac').textContent     = d.mac || '';
+  $('ri-mac').textContent     = d.mac || '--';
+  $('ri-fw').textContent      = d.fw ? 'v' + d.fw : '--';
+  $('ri-status').textContent  = '● Online';
+  $('ri-status').style.color  = 'var(--accent)';
+  $('ri-lastseen').textContent = fmtTime(dev?.lastSeen);
+
+  // Tank visual
+  const fillPct = d.level >= 0 ? Math.max(0, Math.min(100, d.level)) : 0;
+  $('tank-water').style.height       = fillPct + '%';
+  $('tank-pct-label').textContent    = d.level >= 0 ? Math.round(d.level) + '%' : 'ERR';
+  $('tank-dist-txt').textContent     = d.dist >= 0 ? `Distance: ${d.dist.toFixed(1)} cm` : 'Sensor Error';
+  $('th-start').textContent          = (d.startLvl || '--') + '%';
+  $('th-stop').textContent           = (d.stopLvl || '--') + '%';
+
+  // Pump
+  const running = d.pump;
+  $('pump-icon').className       = 'pump-icon ' + (running ? 'running' : 'stopped');
+  $('pump-state-txt').textContent = running ? 'RUNNING' : 'STOPPED';
+  $('pump-state-txt').className  = 'pump-state-txt ' + (running ? 'pump-state-running' : 'pump-state-stopped');
+  $('pump-mode-note').textContent = isManual ? '⚠ Manual mode — DP switch controls motor' : 'Auto mode active';
+
+  // Pump buttons
+  const locked = isManual;
+  document.querySelectorAll('.ctrl-btn').forEach(b => b.disabled = locked);
+  $('pump-disabled-note').textContent = locked ? 'Pump buttons disabled — device is in MANUAL mode' : '';
+
+  // Settings fill
+  if (document.activeElement.tagName !== 'INPUT') {
+    if (d.tankH)    { $('set-tankH').value = d.tankH; }
+    if (d.ovfDist)  { $('set-ovfDist').value = d.ovfDist; }
+    if (d.startLvl) { $('set-startLvl').value = d.startLvl; $('lbl-start').textContent = d.startLvl; }
+    if (d.stopLvl)  { $('set-stopLvl').value  = d.stopLvl;  $('lbl-stop').textContent  = d.stopLvl;  }
+  }
+  autoEnabled = d.autoEn !== false;
+  $('toggle-autoEn').className = 'toggle ' + (autoEnabled ? 'on' : 'off');
+
+  // IP display
+  if (d.ip) { $('dv-ip').textContent = d.ip; $('ri-ip').textContent = d.ip; }
+
+  // Level history chart
+  if (d.level >= 0) {
+    levelHistory.push(d.level);
+    if (levelHistory.length > 60) levelHistory.shift();
+    drawChart();
+  }
+
+  renderDeviceList();
+}
+
+function markOffline() {
+  const dev = devices.find(x => x.ip === selectedIp);
+  if (dev) dev.online = false;
+  $('dv-online-pill').className   = 'status-pill pill-offline';
+  $('dv-online-pill').textContent = 'OFFLINE';
+  $('ri-status').textContent      = '● Offline';
+  $('ri-status').style.color      = 'var(--danger)';
+  renderDeviceList();
+}
+
+// ======================== CHART ========================
+function drawChart() {
+  if (levelHistory.length < 2) return;
+  const W = 300, H = 80, pad = 4;
+  const max = 100, min = 0;
+  const pts = levelHistory.map((v, i) => {
+    const x = pad + (i / (levelHistory.length - 1)) * (W - 2 * pad);
+    const y = H - pad - ((v - min) / (max - min)) * (H - 2 * pad);
+    return `${x},${y}`;
+  });
+  const line = 'M ' + pts.join(' L ');
+  const fill = line + ` L ${300 - pad},${H} L ${pad},${H} Z`;
+  $('chart-line').setAttribute('d', line);
+  $('chart-fill').setAttribute('d', fill);
+}
+
+// ======================== PUMP CONTROL ========================
+async function controlPump(on) {
+  if (!selectedIp) return;
+  try {
+    const d = await apiPost(selectedIp, 'api/pump', { on });
+    if (d.ok) {
+      toast(`Pump ${on ? 'started' : 'stopped'}`, 'ok');
+      logEntry(`Pump ${on ? 'ON' : 'OFF'} command sent`, on ? 'ok' : 'warn');
+      refreshSelected();
+    } else {
+      toast(d.msg || 'Command failed', 'err');
+    }
+  } catch { toast('Device unreachable', 'err'); }
+}
+
+// ======================== SETTINGS ========================
+function toggleAutoEn() {
+  autoEnabled = !autoEnabled;
+  $('toggle-autoEn').className = 'toggle ' + (autoEnabled ? 'on' : 'off');
+}
+
+async function saveSettings() {
+  if (!selectedIp) return;
+  const start = parseInt($('set-startLvl').value);
+  const stop  = parseInt($('set-stopLvl').value);
+  if (start >= stop) { toast('Start level must be less than stop level', 'err'); return; }
+  try {
+    const d = await apiPost(selectedIp, 'api/settings', {
+      tankH:    parseInt($('set-tankH').value),
+      ovfDist:  parseInt($('set-ovfDist').value),
+      startLvl: start,
+      stopLvl:  stop,
+      autoEn:   autoEnabled
+    });
+    if (d.ok) { toast('Settings saved!', 'ok'); logEntry('Settings updated', 'ok'); refreshSelected(); }
+    else        toast('Save failed', 'err');
+  } catch { toast('Device unreachable', 'err'); }
+}
+
+async function saveDeviceLabel() {
+  if (!selectedIp) return;
+  const name     = $('set-devname').value.trim();
+  const location = $('set-location').value.trim();
+  await fetch('/api/registry/add', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ip: selectedIp, name, location})
+  });
+  await loadRegistry();
+  $('dv-name').textContent = name;
+  toast('Label updated', 'ok');
+}
+
+// ======================== PING ALL ========================
+async function pingAllDevices() {
+  toast('Pinging all devices...', 'warn');
+  for (const dev of devices) {
+    fetch(`/api/registry/${dev.ip}/ping`).then(r=>r.json()).then(d => {
+      dev.online = d.online;
+      renderDeviceList();
+    });
+  }
+  setTimeout(() => { renderDeviceList(); toast('Ping complete', 'ok'); }, 3000);
+}
+
+// ======================== MODAL ========================
+function openAddModal() {
+  $('add-modal').classList.add('open');
+  setTimeout(() => $('modal-ip').focus(), 100);
+}
+function closeAddModal() {
+  $('add-modal').classList.remove('open');
+  $('modal-ip').value = $('modal-name').value = $('modal-location').value = '';
+}
+$('add-modal').addEventListener('click', e => { if (e.target === $('add-modal')) closeAddModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAddModal(); });
+
+// ======================== INIT ========================
+loadRegistry();
+// Auto-ping every 30 seconds
+setInterval(pingAllDevices, 30000);
+</script>
+</body>
+</html>
